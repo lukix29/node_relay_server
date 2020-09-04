@@ -1,0 +1,27 @@
+{
+  "name": "node-rtmp-server",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/test.js"
+  },
+  "dependencies": {
+    "bson": "^4.1.0",
+    "bufferutil": "^4.0.1",
+    "flare-webm-demuxer": "0.0.2",
+    "flv.js": "^1.5.0",
+    "install": "^0.13.0",
+    "node-media-server": "^2.2.2",
+    "npm": "^6.14.8",
+    "rollup-plugin-cleanup": "^3.1.1",
+    "rollup-plugin-minify": "^1.0.3",
+    "rollup-plugin-uglify": "^6.0.4",
+    "utf-8-validate": "^5.0.2",
+    "ws": "^7.3.1",
+    "xxhash": "^0.3.0"
+  },
+  "devDependencies": {
+    "rollup-plugin-commonjs": "^10.1.0",
+    "rollup-plugin-node-resolve": "^5.2.0"
+  }
+}

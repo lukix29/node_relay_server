@@ -1,0 +1,12 @@
+body {
+    background-color: black;
+    color: gainsboro;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+video {
+    height: calc(95vw / (16.0 / 9.0));
+    width: 95vw;
+}

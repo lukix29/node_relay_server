@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Webm Stream Test</title>
+</head>
+<style>
+    body {
+        color: gainsboro;
+        background-color: black;
+        font-family: "Lucida Console", monospace;
+    }
+
+    input {
+        font-size: 1.2em;
+    }
+
+    canvas {
+        border: 1px solid dimgray;
+        height: 480px;
+        width: 852px;
+    }
+
+    video {
+        border: 1px solid dimgray;
+        height: 360px;
+        width: 640px;
+    }
+
+    #video-container {
+        display: flex;
+        flex-direction: column;
+        margin-bottom: 10px;
+        margin-top: 10px;
+    }
+
+    #container {
+        display: flex;
+        flex-direction: column;
+    }
+</style>
+<body>
+<div id="container">
+    <div id="video-container">
+        <!--        <video style="display:none;" id="webcam" muted controls loop preload="metadata"></video>-->
+        <canvas width="852" height="480" id="drawing"></canvas>
+    </div>
+    <video style="display: none" id="output" muted controls preload="none"></video>
+</div>
+<input type="button" id="startstream" value="Start Stream">
+</body>
+</html>
+<script src="//cdnjs.cloudflare.com/ajax/libs/numeral.js/2.0.6/numeral.min.js"></script>
+<script src="../webm/js/bson.bundle.js"></script>
+<script src="../webm/js/index.js"></script>
