@@ -23,6 +23,15 @@ class FFmpeg extends InternalEventHandler {
         }
     }
 
+    static get CodecLibKeys() {
+        return {
+            "vp8": "libvpx",
+            "vp9": "libvpx-vp9",
+            "h264": "libx264",
+            "opus": "libopus"
+        };
+    }
+
     get id() {
         return this.ffmpeg_proc.pid || -1;
     }

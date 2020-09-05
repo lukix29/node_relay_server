@@ -6,13 +6,6 @@ const {RtmpRelaySession} = require("./relaysession");
 const {ConsoleLogger, LogLevel} = require("./logger");
 const Logger = new ConsoleLogger("RTMP_SERVER");
 const Helpers = require("./helpers");
-/*Webserver START*/
-// const WebSocket = require('ws');
-// const Http = require('http');
-// const Express = require('express');
-// const bodyParser = require('body-parser');
-// const app = Express();
-/*Webserver END*/
 
 class RtmpAllowType {
     static get All() {
@@ -316,4 +309,6 @@ module.exports = {
     RtmpAllowType: RtmpAllowType,
 
     DefaultConfig: DEFAULT_CONFIG,
+
+    HttpServer: require("./http/httpserver"),
 };

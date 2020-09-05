@@ -173,57 +173,252 @@ class BinaryWebsocket extends WebSocket {
     }
 }
 
-const Bitrates = {
-    240: [
-        {fps: 30, bitrate: 200}
-    ],
-    360: [
-        {fps: 30, bitrate: 300}
-    ],
-    480: [
-        {fps: 30, bitrate: 800}
-    ],
-    720: [
-        {fps: 30, bitrate: 1100},
-        {fps: 60, bitrate: 2000}
-    ],
-    1080: [
-        {fps: 30, bitrate: 2000},
-        {fps: 60, bitrate: 3000}
-    ],
-    1440: [
-        {fps: 30, bitrate: 6000},
-        {fps: 60, bitrate: 9000}
-    ],
-    2160: [
-        {fps: 30, bitrate: 12000},
-        {fps: 60, bitrate: 18000}
-    ],
-    find: (height, fps) => {
-        if (Bitrates.hasOwnProperty(height)) {
-            if (Bitrates[height].length === 1 || fps <= Bitrates[height][0].fps) {
-                return Bitrates[height][0].bitrate;
-            } else if (Bitrates[height].length > 1 && fps >= Bitrates[height][0].fps) {
-                return Bitrates[height][1].bitrate;
+class CodecItem {
+    constructor(index, description, videoCodec, audioCodec, videoArgs, defaultBitrates = AvailableCodecs.X264Bitrates, mimeType = null) {
+        this.__values = {
+            index: index,
+            description: description,
+            info: {
+                videoCodec: videoCodec,
+                audioCodec: audioCodec,
+                videoArgs: {...videoArgs}
+            },
+            mime: (typeof mimeType === "string") ? mimeType : `video/x-matroska;codecs="${videoCodec},${audioCodec}"`,
+            defaultBitrates: defaultBitrates,
+        };
+    }
+
+    get index() {
+        return this.__values.index;
+    }
+
+    get description() {
+        return this.__values.description;
+    }
+
+    get info() {
+        return this.__values.info;
+    }
+
+    get videoCodec() {
+        return this.__values.info.videoCodec;
+    }
+
+    get audioCodec() {
+        return this.__values.info.audioCodec;
+    }
+
+    get videoArgs() {
+        return this.__values.info.videoArgs;
+    }
+
+    get mime() {
+        return this.__values.mime;
+    }
+
+    getBitrate(height, fps) {
+        if (this.__values.defaultBitrates.hasOwnProperty(height)) {
+            if (this.__values.defaultBitrates[height].length === 1 || fps <= this.__values.defaultBitrates[height][0].fps) {
+                return this.__values.defaultBitrates[height][0].bitrate;
+            } else if (this.__values.defaultBitrates[height].length > 1 && fps >= this.__values.defaultBitrates[height][0].fps) {
+                return this.__values.defaultBitrates[height][1].bitrate;
             }
         }
-        return 2500;
-    },
-    calcDivBy2Width: (height) => {
+        return 3000;
+    }
+}
+
+class AvailableCodecs {
+    static calcDivBy2Width(height) {
         let v = Math.round(height * (16.0 / 9.0));
         if (v % 2 !== 0) return v + 1;
         else return v;
     }
-};
+
+    static isSupported(mimeType) {
+        const videoElement = document.createElement("video");
+        let mimeType4 = mimeType.replace(/video\/[\w-]+;/gmi, "video/mp4;");
+        return (MediaRecorder.isTypeSupported(mimeType)
+            && MediaSource.isTypeSupported(mimeType4)
+            && (videoElement.canPlayType(mimeType4) === "probably"));
+    }
+
+    static get X264Bitrates() {
+        return {
+            240: [
+                {fps: 30, bitrate: 300}
+            ],
+            360: [
+                {fps: 30, bitrate: 500}
+            ],
+            480: [
+                {fps: 30, bitrate: 1000}
+            ],
+            720: [
+                {fps: 30, bitrate: 2000},
+                {fps: 60, bitrate: 4000}
+            ],
+            1080: [
+                {fps: 30, bitrate: 4000},
+                {fps: 60, bitrate: 8000}
+            ],
+            1440: [
+                {fps: 30, bitrate: 8000},
+                {fps: 60, bitrate: 16000}
+            ],
+            2160: [
+                {fps: 30, bitrate: 16000},
+                {fps: 60, bitrate: 32000}
+            ]
+        };
+    };
+
+    static get Vp9Bitrates() {
+        return {
+            240: [
+                {fps: 30, bitrate: 200}
+            ],
+            360: [
+                {fps: 30, bitrate: 300}
+            ],
+            480: [
+                {fps: 30, bitrate: 800}
+            ],
+            720: [
+                {fps: 30, bitrate: 1100},
+                {fps: 60, bitrate: 2000}
+            ],
+            1080: [
+                {fps: 30, bitrate: 2000},
+                {fps: 60, bitrate: 3000}
+            ],
+            1440: [
+                {fps: 30, bitrate: 6000},
+                {fps: 60, bitrate: 9000}
+            ],
+            2160: [
+                {fps: 30, bitrate: 12000},
+                {fps: 60, bitrate: 18000}
+            ]
+        };
+    };
+
+    get values() {
+        return this.__codecs.map((t) => t.mime);
+    }
+
+    get codecs() {
+        return this.__codecs;
+    }
+
+    get best() {
+        return this.__codecs[0];
+    }
+
+    constructor() {
+
+        const vp8Codec = new CodecItem(0, "VP8 / Opus", "vp8", "opus", {level: 0}, this.Vp9Bitrates);
+
+        const vp9Codec = new CodecItem(0, "VP9 / Opus", "vp9", "opus", {level: 0}, this.Vp9Bitrates);
+
+        this.__codecs = [];
+
+        if (AvailableCodecs.isSupported(vp8Codec.mime)) output.push(vp8Codec);
+        if (AvailableCodecs.isSupported(vp9Codec.mime)) output.push(vp9Codec);
+
+        const AVC_PROFILES_DESC = [
+            {profile_idc: 66, index: 3, description: "Constrained Baseline", constrained_set1_flag: true},
+            {profile_idc: 66, index: 4, description: "Baseline"},
+            {profile_idc: 77, index: 5, description: "Constrained Main", constrained_set1_flag: true},
+            {profile_idc: 77, index: 6, description: "Main"},
+            {profile_idc: 100, index: 7, description: "High", constrained_set4_flag: false},
+
+            // {profile_idc: 88,index:1, description: "Extended"},
+            // {profile_idc: 100, description: "High Progressive", constrained_set4_flag: true},
+            // {profile_idc: 100, description: "Constrained High", constrained_set4_flag: true, constrained_set5_flag: true},
+            // {profile_idc: 110, description: "High 10"},
+            // {profile_idc: 110, description: "High 10 Intra", constrained_set3_flag: true},
+            // {profile_idc: 122, description: "High 4:2:2"},
+            // {profile_idc: 122, description: "High 4:2:2 Intra", constrained_set3_flag: true},
+            // {profile_idc: 244, description: "High 4:4:4 Predictive"},
+            // {profile_idc: 244, description: "High 4:4:4 Intra", constrained_set3_flag: true},
+            // {profile_idc: 44, description: "CAVLC 4:4:4 Intra"}
+        ];
+        const AVC_PROFILES_IDC = [66, 77, 88, 100, 110, 122, 244, 44];
+        const AVC_CONSTRAINTS = [0, 4, 8, 16, 32, 64, 128];
+        const AVC_LEVELS = [10, 11, 12, 13, 20, 21, 22, 30, 31, 32, 40, 41, 42, 50, 51, 52];
+
+        let i;
+        for (let j in AVC_PROFILES_IDC) {
+            let sj = AVC_PROFILES_IDC[j].toString(16);
+            if (sj.length === 1) sj = "0" + sj;
+            for (let k in AVC_CONSTRAINTS) {
+                let sk = AVC_CONSTRAINTS[k].toString(16);
+                if (sk.length === 1) sk = "0" + sk;
+
+                let desc = "";
+                let index = 0;
+                for (i in AVC_PROFILES_DESC) {
+                    if (AVC_PROFILES_IDC[j] === AVC_PROFILES_DESC[i].profile_idc) {
+                        let c = ((AVC_PROFILES_DESC[i].constrained_set0_flag ? 1 : 0) << 7) |
+                            ((AVC_PROFILES_DESC[i].constrained_set1_flag ? 1 : 0) << 6) |
+                            ((AVC_PROFILES_DESC[i].constrained_set2_flag ? 1 : 0) << 5) |
+                            ((AVC_PROFILES_DESC[i].constrained_set3_flag ? 1 : 0) << 4) |
+                            ((AVC_PROFILES_DESC[i].constrained_set4_flag ? 1 : 0) << 3) |
+                            ((AVC_PROFILES_DESC[i].constrained_set5_flag ? 1 : 0) << 2);
+                        if (c === AVC_CONSTRAINTS[k]) {
+                            desc = AVC_PROFILES_DESC[i].description;
+                            index = AVC_PROFILES_DESC[i].index;
+                            break;
+                        }
+                    }
+                }
+                if (desc.length > 0) {
+                    for (let l in AVC_LEVELS) {
+                        let sl = AVC_LEVELS[l].toString(16);
+                        if (sl.length === 1) sl = "0" + sl;
+                        let mimeX = 'video/x-matroska;codecs="avc1.' + sj + sk + sl + ',opus"';
+                        //let mime4 = 'video/mp4;codecs="avc1.' + sj + sk + sl + ',opus"';
+                        if (AvailableCodecs.isSupported(mimeX)) {
+                            const level = AVC_LEVELS[l] / 10;
+                            this.__codecs.push(new CodecItem(index * AVC_LEVELS[l], `H264 ${desc} ${level} / Opus`,
+                                "h264", "opus", {
+                                    level: level,
+                                    IDC: AVC_PROFILES_IDC[j],
+                                    constraints: AVC_CONSTRAINTS[k]
+                                }, AvailableCodecs.X264Bitrates, mimeX));
+                        }
+                    }
+                }
+            }
+        }
+
+        this.__codecs.sort((a, b) => b.index - a.index);
+    }
+}
+
+const codecs = new AvailableCodecs();
+const CODEC = codecs.best;
 
 const FPS = 30;
 const Height = 480;
-const Width = Bitrates.calcDivBy2Width(Height);
+const Width = AvailableCodecs.calcDivBy2Width(Height);
 
 const ChunkLength = 1000;
-const VideoBitrate = Bitrates.find(Height, FPS);//kbit/s
-const AudioBitrate = 128;//kbit/s
+const VideoBitrate = CODEC.getBitrate(Height, FPS);//kbit/s
+const AudioBitrate = 96;//kbit/s
 const AllByterate = (VideoBitrate * 1000 + AudioBitrate * 1000) / 8;
+
+let videoChunkHeader = {
+    chunkLength: ChunkLength,
+    codec: CODEC.info,
+    mimeType: CODEC.mime,
+    fps: FPS,
+    videoBitsPerSecond: Math.floor(VideoBitrate * 1000),
+    audioBitsPerSecond: Math.floor(AudioBitrate * 1000),
+};
+
+console.log(codecs);
 
 let recorderStartTime = performance.now();
 let frameCount = 0;
@@ -432,6 +627,8 @@ function CanvasTestFrame(ctx, width, height) {
 }
 
 window.onload = () => {
+    //MediaSource.isTypeSupported('video/mp4;codecs="vp09.00.10.08');
+
     const canvas = document.getElementById('drawing');
 
     canvas.setAttribute("width", Width);
@@ -478,16 +675,6 @@ window.onload = () => {
     const ctx = canvas.getContext('2d');
 
     const testFrameRenderer = new CanvasTestFrame(ctx, width, height, FPS);
-
-    const encodeMime = "video/webm;codecs=vp9,opus";
-
-    let videoChunkHeader = {
-        chunkLength: ChunkLength,
-        mimeType: encodeMime,
-        fps: FPS,
-        videoBitsPerSecond: Math.floor(VideoBitrate * 1000),
-        audioBitsPerSecond: Math.floor(AudioBitrate * 1000),
-    };
 
     function audioTest() {
         var cStream,
@@ -645,11 +832,14 @@ window.onload = () => {
             videoBitsPerSecond: videoChunkHeader.videoBitsPerSecond,
             audioBitsPerSecond: videoChunkHeader.audioBitsPerSecond
         });
+        mediaRecorder.videoBitsPerSecond = 1000 * 1000;
 
-        let bpsTimer = null;
+        console.dir(mediaStream);
+
+        let lastDataRequest = 0;
+        let currentChunkLength = ChunkLength;
+        let dataRequestTimer = 0;
         let lastSentBytes = 0;
-        let bpsAvg = 0;
-        let bpsAvgCnt = 0;
 
         function calcBytesPerSecond() {
             //const p0 = performance.now();
@@ -668,19 +858,36 @@ window.onload = () => {
         }
 
         //calcBytesPerSecond(10);
+        function requestData() {
+            if (mediaRecorder) mediaRecorder.requestData();
+            lastDataRequest = performance.now();
+        }
 
         mediaRecorder.addEventListener('dataavailable', (e) => {
             e.data.arrayBuffer().then((data) => {
                 if (ws.readyState === WebSocket.OPEN) {
+                    videoChunkHeader.chunkLength = currentChunkLength;
                     videoChunkHeader.chunkSize = data.byteLength;
+
                     ws.send(data, videoChunkHeader);
+
                     sentBytes += data.byteLength;
                     calcBytesPerSecond();
+
+                    currentChunkLength = Math.max(1, ChunkLength - Math.floor((performance.now() - lastDataRequest) + 0.5));
+                    dataRequestTimer = setTimeout(requestData, currentChunkLength);
                 }
             }).catch(console.error);
         });
 
-        mediaRecorder.start(ChunkLength);
+        mediaRecorder.addEventListener("stop", (e) => {
+            if (dataRequestTimer) clearTimeout(dataRequestTimer);
+            ws.close();
+        });
+
+        mediaRecorder.start(0);
+
+        dataRequestTimer = setTimeout(requestData, ChunkLength);
 
         recorderStartTime = performance.now();
         frameCount = 0;
@@ -712,25 +919,25 @@ window.onload = () => {
         // });
     }
 
-    start_button.addEventListener("click", () => {
-        if (mediaRecorder === null) {
-            testFrameRenderer.start();
-            ws = new BinaryWebsocket("ws://localhost/webmingest/");
-            // ws.test();
-            ws.binaryType = "arraybuffer";
-            for (let event in wsEvents) {
-                ws.addEventListener(event, wsEvents[event]);
-            }
-            start_button.value = "Stop Stream";
-            console.log("Started capture");
-        } else {
+    start_button.onclick = () => {
+        testFrameRenderer.start();
+        ws = new BinaryWebsocket("ws://localhost/webmingest/");
+        // ws.test();
+        ws.binaryType = "arraybuffer";
+        for (let event in wsEvents) {
+            ws.addEventListener(event, wsEvents[event]);
+        }
+        start_button.value = "Stop Stream";
+        console.log("Started capture");
+
+        start_button.onclick = () => {
             mediaRecorder.stop();
             testFrameRenderer.stop();
             start_button.value = "Start Stream";
             mediaRecorder = null;
             console.log("Stopped capture");
-        }
-    });
+        };
+    };
 
     canvas.addEventListener("click", () => {
         if (testFrameRenderer.isRunning()) {

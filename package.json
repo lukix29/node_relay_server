@@ -6,6 +6,7 @@
     "start": "node ./bin/test.js"
   },
   "dependencies": {
+    "@rollup/plugin-json": "^4.1.0",
     "bson": "^4.1.0",
     "bufferutil": "^4.0.1",
     "flare-webm-demuxer": "0.0.2",

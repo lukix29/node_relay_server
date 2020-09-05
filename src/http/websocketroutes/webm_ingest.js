@@ -186,36 +186,40 @@ class WebmIngestWebSocket extends VideoWebSocket {
         ]);
 
         const ffmpeg = new FFmpeg();
+        console.log(FFmpeg.CodecLibKeys);
 
-        const testFile = Path.resolve("./media/stream.webm");
+        const testFile = Path.resolve("./media/stream.mkv");
+        const testHeaderFile = Path.resolve("./media/stream_header.json");
+        FS.writeFileSync(testHeaderFile, "[\n", {encoding: "utf8"});
 
         socket.on('message', (raw) => {
             try {
                 const message = WebmIngestWebSocket.getHeader(raw);
 
-                if (firstPacket.length < 5) {
-                    if (firstPacket.length === 0) {
-                        const videoBitrate = Math.floor(message.header.videoBitsPerSecond / 1000);
-                        ffmpegArgs.set("-b:v", videoBitrate + "k");
-                        ffmpegArgs.set("-b:a", Math.floor(message.header.audioBitsPerSecond / 1000) + "k");
-                        ffmpegArgs.set("-bufsize", Math.floor((videoBitrate * 1.45) * 2) + "k");
-                        ffmpegArgs.set("-minrate", Math.floor(videoBitrate / 2) + "k");
-                        ffmpegArgs.set("-maxrate", Math.floor(videoBitrate * 1.45) + "k");
-                    }
+                FS.appendFileSync(testHeaderFile, JSON.stringify(message.header, null, 3) + ",\n", {encoding: "utf8"});
+
+                if (firstPacket.length < 3) {
+                    //if (firstPacket.length === 0) {
+                    //const videoBitrate = Math.floor(message.header.videoBitsPerSecond / 1000);
+                    // ffmpegArgs.set("-b:v", videoBitrate + "k");
+                    // ffmpegArgs.set("-b:a", Math.floor(message.header.audioBitsPerSecond / 1000) + "k");
+                    // ffmpegArgs.set("-bufsize", Math.floor((videoBitrate * 1.45) * 2) + "k");
+                    // ffmpegArgs.set("-minrate", Math.floor(videoBitrate / 2) + "k");
+                    // ffmpegArgs.set("-maxrate", Math.floor(videoBitrate * 1.45) + "k");
+                    //}
                     firstPacket.push(message.data);
 
-                    if (firstPacket.length === 5) {
+                    if (firstPacket.length === 3) {
                         firstPacket = Buffer.concat(firstPacket);
                         console.log('Saved start of Stream ' + firstPacket.byteLength);
-                        //FS.writeFileSync(testFile, firstPacket, {encoding: "binary"});
+                        FS.writeFileSync(testFile, firstPacket, {encoding: "binary"});
 
-                        ffmpeg.write(firstPacket);
+
                     } else if (firstPacket.length === 1) {
-                        ffmpeg.start(ffmpegArgs);
+
                     }
                 } else {
-                    ffmpeg.write(message.data);
-                    // FS.appendFileSync(testFile, message.data, {encoding: "binary"});
+                    FS.appendFileSync(testFile, message.data, {encoding: "binary"});
                     //console.log('Socket received ' + message.length + " Bytes");
                 }
             } catch (e) {
@@ -227,6 +231,7 @@ class WebmIngestWebSocket extends VideoWebSocket {
         socket.on('close', (code, reason) => {
             console.log(`Socket close ${reason} (${code})`);
             ffmpeg.kill();
+            FS.appendFileSync(testHeaderFile, "\n]", {encoding: "utf8"});
         });
 
         socket.on('error', (error) => {
